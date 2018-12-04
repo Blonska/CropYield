@@ -11,7 +11,7 @@ class YieldEnergyComponent:
             raise Exception('Data is empty')
         return read_data
 
-    #ТаблицяБ11,ТаблицяБ21,
+    #ТаблицяБ11,ТаблицяБ21,ТаблицяБ31
     def _parcing_data(self,data,culture=None,param=None,border=None):
         self.data1 = self._read_data(data)
         if not culture==None:
@@ -22,6 +22,7 @@ class YieldEnergyComponent:
             self.data1=self.data1.loc[self.data1['Межа'].isin([border])]
         return self.data1
     
+    #data from ТаблицяБ21
     def _tay(self,data=None,Di=None,Mi=None,culture=None,border=None):
         if Di==None:
             Di=self._parcing_data(data,culture,'Di',border)
@@ -53,20 +54,20 @@ class YieldEnergyComponent:
         return xt2
 
 
-    def YT(self,data=None,Mi=None,Di=None,culture=None,border=None,yb=None,yot=None,kt=None,lt=None,mt=None):
+    def YT(self,data=None,data1=None,Mi=None,Di=None,culture=None,border=None,yb=None,yot=None,kt=None,lt=None,mt=None,region=None):
         '''yt - energy component of performance
            yb - maximum productivity of culture
            yot,kt,lt,mt - model parameters'''
         if yb==None:
-            yb=self._parcing_data(data,culture,'yb',border)
+            yb=self._parcing_data(data1,culture,'yb',border)
         if yot==None:
-            yot=self._parcing_data(data,culture,'yot',border)
+            yot=self._parcing_data(data1,culture,'yot',border)
         if lt==None:
-            lt=self._parcing_data(data,culture,'lt',border)
+            lt=self._parcing_data(data1,culture,'lt',border)
         if mt==None:
-            mt=self._parcing_data(data,culture,'mt',border)
-        region = lambda x: self._xt1(data,Di,Mi,culture,border) if _xt1=='Полісся' else self._xt2(data,Di,Mi,culture,border)
-        yt = (yb * yot * np.exp(-kt * ((region - lt) ** 2))) / (1 + (100 - yot) * np.exp(-mt * (region - lt)))
+            mt=self._parcing_data(data1,culture,'mt',border)
+        reg = lambda : self._xt1(data,Di,Mi,culture,border) if region=='Полісся' else self._xt2(data,Di,Mi,culture,border)
+        yt = (yb * yot * np.exp(-kt * ((reg() - lt) ** 2))) / (1 + (100 - yot) * np.exp(-mt * (reg() - lt)))
         return yt
 
 class YieldSoilComponent:
@@ -99,7 +100,7 @@ class YieldSoilComponent:
     def _parcing_data3(self,data,soilparam=None,param1=None,param2=None,param3=None,param4=None,param5=None,hama1=None):
         self.data1 = YieldEnergyComponent._read_data(self,data)
         if not soilparam==None:
-            self.data1= self.data1.loc[self.data1['Грунтовий показник'] == soilparam]
+            self.data1=self.data1.loc[self.data1['Грунтовий показник'] == soilparam]
         if not param1==None:
             self.data1=self.data1.loc[self.data1['Поживні речовини'].isin([param1])]
         if not param2==None:
@@ -160,11 +161,11 @@ class YieldSoilComponent:
     
     def _hama(hama1=None,hama2=None,hama3=None):
         if hama1==None:
-            hama1=self.data1.loc[self.data1['Гама1'] == hama1]
+            hama1=self._parcing_data3(data,soilparam,param,param2,param3,param4,param5,'Гама1')
         if hama2==None:
-            hama2=self.data1.loc[self.data1['Гама2'] == hama2]
+            hama2=self._parcing_data4(data,soilparam,G,Eh,d,H,P,K,pH,h,W,'Гама2')
         if hama3==None:
-            hama3=self.data1.loc[self.data1['Гама3'] == hama2]
+            hama3=self._parcing_data5(data,param,diraction,mark1,medaction,mark2,'Гама')
         hama=1 / 3 * (hama1 + hama2 + hama3)
         return hama
 
@@ -185,15 +186,19 @@ class YieldSoilComponent:
            yop,kp,lp,mp - parameters of the model of tolerance
            xp - meaning of soil indicators
         '''
+        self.data1 = YieldEnergyComponent._read_data(self,data)
         if yb==None:
             yb=YieldEnergyComponent._parcing_data(data,culture,'yb',border)
         if yop==None:
             yop=self._parcing_data1(data,culture,soilparam,'yop')
         if kp==None:
-            lt=self._parcing_data1(data,culture,soilparam,'kp')
+            kp=self._parcing_data1(data,culture,soilparam,'kp')
         if lp==None:
-            lp=self._parcing_data(data,culture,soilparam,'lp')
-        #xp(_parcing_data2)
+            kp=self._parcing_data1(data,culture,soilparam,'lp')
+        if mp==None:
+            kp=self._parcing_data1(data,culture,soilparam,'mp')
+
+        #xp(_parcing_data2)ТаблицяБ5
         yp = hama * (nf * nl * ns * nd * kf * kwt * ks * kl * kd * ki * kh * kw * yb * yop * np.exp(-kp * ((xp - lp) ** 2))) / (1 + (100 - yop) * np.exp(-mp * (xp - lp)))
         return yp
 
@@ -287,8 +292,8 @@ class Productivityofland:
          return p
     
 
-object = Productivityofland()
-print(object.YE(data='D:\ТаблицяБ9.xlsx',culture='Овес',ys=3,yl=8))
+object = WeighSoilComponent()
+print(object._parcing_data(data='D:\ТаблицяБ7.xlsx'))
 
 #if __name__ == "__main__":
     #yield_soil_component = YieldSoilComponent()
@@ -297,6 +302,7 @@ print(object.YE(data='D:\ТаблицяБ9.xlsx',culture='Овес',ys=3,yl=8))
     #print(new_data.loc[new_data['Тип грунту'] == 'Дернові опідзолені'])
     #new_data1 = data.loc[(data['Зона'] == 'Поліська')  & data['Тип грунту'].isin(['Дернові опідзолені']) & data['Гранулометричний склад '].isin(['Піщані']) & data['Межа'].isin(['Нижня']) ]
     #print(new_data1)
+
 
 
 
